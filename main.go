@@ -2,8 +2,12 @@ package main
 
 import (
 	"fmt"
-	// "os"
-	// "context"
+	"os"
+	"log"
+	"os/signal"
+	"syscall"
+	"time"
+	"context"
 	"student-performance-report/config"
 	"student-performance-report/database"
 	FiberApp "student-performance-report/fiber"
@@ -41,4 +45,28 @@ func main() {
 	routeMongo.SetupMongoRoutes(app, database.MongoDB)
 
 	fmt.Println("Setup route berhasil")
+
+	// 5 Start server
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	go func() {
+		log.Printf("Server running on :%s", port)
+		if err := app.Listen(":" + port); err != nil {
+			log.Printf("Server stopped: %v", err)
+		}
+	}()
+
+	// 6 Graceful shutdown
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+	<-quit
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := app.ShutdownWithContext(ctx); err != nil {
+		log.Printf("Server forced to shutdown: %v", err)
+	}
 }
