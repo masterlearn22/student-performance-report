@@ -8,6 +8,7 @@ import (
 	"syscall"
 	"time"
 	"context"
+	"github.com/gofiber/fiber/v2/middleware/logger"
 	"student-performance-report/config"
 	"student-performance-report/database"
 	FiberApp "student-performance-report/fiber"
@@ -39,6 +40,7 @@ func main() {
 
 	//3 Setup Fiber App
 	app := FiberApp.SetupFiber()
+	app.Use(logger.New())
 
 	//4. Setup Route
 	routePostgre.SetupPostgresRoutes(app, database.PostgresDB)
@@ -58,6 +60,8 @@ func main() {
 			log.Printf("Server stopped: %v", err)
 		}
 	}()
+
+	
 
 	// 6 Graceful shutdown
 	quit := make(chan os.Signal, 1)

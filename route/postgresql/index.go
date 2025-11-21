@@ -1,28 +1,36 @@
 package route
 
 import (
-	"database/sql"
+    "database/sql"
 
-	repo "student-performance-report/app/repository/postgresql"
-	service "student-performance-report/app/service/postgresql"
-	// "student-performance-report/middleware"
+    repo "student-performance-report/app/repository/postgresql"
+    service "student-performance-report/app/service/postgresql"
+    "student-performance-report/middleware"
 
-	"github.com/gofiber/fiber/v2"
+    "github.com/gofiber/fiber/v2"
 )
 
 func SetupPostgresRoutes(app *fiber.App, db *sql.DB) {
 
-	userRepo := repo.NewUserRepository(db)
-	authService := service.NewAuthService(userRepo)
+    userRepo := repo.NewUserRepository(db)
+    authService := service.NewAuthService(userRepo)
 
-	api := app.Group("/api/v1/auth")
+    adminRepo := repo.NewAdminRepository(db)
+    adminService := service.NewAdminService(adminRepo, userRepo)
 
-	// PUBLIC
-	api.Post("/login", authService.Login)
-	api.Post("/refresh", authService.Refresh)
+    // AUTH
+    auth := app.Group("/api/v1/auth")
+    auth.Post("/login", authService.Login)
+    auth.Post("/refresh", authService.Refresh)
+    auth.Post("/logout", middleware.AuthRequired(), authService.Logout)
+    auth.Get("/profile", middleware.AuthRequired(), authService.Profile)
 
-	// PROTECTED
-	// protected := api.Group("", middleware.AuthRequired())
-	// protected.Post("/logout", authService.Logout)
-	// protected.Get("/profile", authService.Profile)
+    // USERS (protected)
+    users := app.Group("/api/v1/users", middleware.AuthRequired())
+    users.Get("/", middleware.RoleAllowed("admin"), adminService.GetAllUsers)
+    users.Get("/:id", adminService.GetUserByID)
+    users.Post("/", middleware.RoleAllowed("admin"), adminService.CreateUser)
+    users.Put("/:id", adminService.UpdateUser)
+    users.Delete("/:id", adminService.DeleteUser)
+    users.Put("/:id/role", middleware.RoleAllowed("admin"), adminService.AssignRole)
 }

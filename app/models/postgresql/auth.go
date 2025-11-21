@@ -11,8 +11,6 @@ type JWTClaims struct {
 	UserID      uuid.UUID `json:"userId"`
 	RoleID      uuid.UUID `json:"roleId"`
 	RoleName    string    `json:"roleName"`
-	// Permissions kita simpan juga sesuai SRS FR-001, 
-	// tapi hati-hati jika permission sangat banyak, token bisa jadi besar.
 	Permissions []string  `json:"permissions,omitempty"` 
 	
 	jwt.RegisteredClaims
