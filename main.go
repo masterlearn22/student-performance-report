@@ -12,8 +12,7 @@ import (
 	"student-performance-report/config"
 	"student-performance-report/database"
 	FiberApp "student-performance-report/fiber"
-	routePostgre "student-performance-report/route/postgresql"
-	routeMongo "student-performance-report/route/mongodb"
+	route "student-performance-report/route"
 
 	
 )
@@ -43,8 +42,7 @@ func main() {
 	app.Use(logger.New())
 
 	//4. Setup Route
-	routePostgre.SetupPostgresRoutes(app, database.PostgresDB)
-	routeMongo.SetupMongoRoutes(app, database.MongoDB)
+	route.SetupPostgresRoutes(app, database.PostgresDB)
 
 	fmt.Println("Setup route berhasil")
 
