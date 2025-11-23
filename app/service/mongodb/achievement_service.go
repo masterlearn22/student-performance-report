@@ -6,6 +6,7 @@ import (
     "os"
     "fmt"
     "path/filepath"
+    "math"
 
     
     // Import Models
@@ -136,41 +137,85 @@ func (s *AchievementService) CreateAchievement(c *fiber.Ctx) error {
 }
 
 // === Endpoint Logic: GET ALL (List) ===
+// ... imports
+
+// === Endpoint Logic: GET ALL (List with Pagination) ===
 func (s *AchievementService) GetAllAchievements(c *fiber.Ctx) error {
     ctx := c.Context()
-    
-    // 1. Ambil User Info (Gunakan helper baru)
     userID, err := getUserIDFromToken(c)
-    if err != nil {
-         return c.Status(401).JSON(fiber.Map{"error": err.Error()})
-    }
-    
+    if err != nil { return c.Status(401).JSON(fiber.Map{"error": err.Error()}) }
     role := getUserRoleFromToken(c)
 
+    // 1. PARSE QUERY PARAMS (Page, Limit, Status, Sort)
+    var query modelPg.PaginationQuery
+    if err := c.QueryParser(&query); err != nil {
+        // Default values jika parsing gagal
+        query.Page = 1
+        query.Limit = 10
+    }
+    
+    // Set Defaults
+    if query.Page <= 0 { query.Page = 1 }
+    if query.Limit <= 0 { query.Limit = 10 }
+    if query.Limit > 100 { query.Limit = 100 } // Max limit guard
+
+    // Calculate Offset
+    offset := (query.Page - 1) * query.Limit
+
+    // 2. SIAPKAN FILTER (Logic Role sama seperti sebelumnya)
     filters := make(map[string]interface{})
 
-    if role == "mahasiswa" || role == "Mahasiswa" { // Case insensitive check
-        studentID, err := s.pgRepo.GetStudentByUserID(ctx, userID)
-        if err != nil {
-            return c.Status(404).JSON(fiber.Map{"error": "Student profile not found"})
-        }
+    if role == "mahasiswa" || role == "Mahasiswa" {
+        studentID, _ := s.pgRepo.GetStudentByUserID(ctx, userID)
         filters["student_id"] = studentID
+        // Mahasiswa bisa filter status sendiri via query param (misal ?status=draft)
+        if query.Status != "" {
+            filters["status"] = query.Status
+        }
     } 
-    // Jika Admin, filters kosong (Load semua)
-    // Jika Dosen Wali, nanti tambahkan logic filter by advisee
+    
+    if role == "dosen_wali" || role == "Dosen Wali" {
+        lecturerID, _ := s.lecturer.GetLecturerByUserID(ctx, userID)
+        advisees, _ := s.lecturer.GetAdvisees(lecturerID)
+        var studentIDs []uuid.UUID
+        for _, mhs := range advisees {
+            studentIDs = append(studentIDs, mhs.ID)
+        }
+        
+        if len(studentIDs) == 0 {
+            // Return empty paginated response
+            return c.JSON(modelPg.PaginatedResponse{
+                Data: []interface{}{},
+                Meta: modelPg.PaginationMeta{
+                    CurrentPage: query.Page, Limit: query.Limit, TotalData: 0, TotalPage: 0,
+                },
+            })
+        }
+        filters["student_ids"] = studentIDs
+        
+        // Dosen default lihat submitted/verified, tapi bisa filter spesifik via query param
+        if query.Status != "" {
+            filters["status"] = query.Status
+        } else {
+            filters["status"] = []string{"submitted", "verified"} 
+        }
+    }
 
-    // 2. Ambil Referensi dari Postgres
-    refs, err := s.pgRepo.GetAllReferences(ctx, filters)
+    refs, totalData, err := s.pgRepo.GetAllReferences(ctx, filters, query.Limit, offset, query.Sort)
     if err != nil {
         return c.Status(500).JSON(fiber.Map{"error": "Database error: " + err.Error()})
     }
 
     if len(refs) == 0 {
-        // Return empty array instead of null
-        return c.JSON([]interface{}{})
+        return c.JSON(modelPg.PaginatedResponse{
+            Data: []interface{}{},
+            Meta: modelPg.PaginationMeta{
+                CurrentPage: query.Page, Limit: query.Limit, TotalData: 0, TotalPage: 0,
+            },
+        })
     }
 
-    // 3. Kumpulkan Mongo IDs
+    // 4. AMBIL DETAIL MONGO (Tetap sama)
     var mongoIDs []string
     refMap := make(map[string]modelPg.AchievementReference)
     for _, r := range refs {
@@ -178,30 +223,38 @@ func (s *AchievementService) GetAllAchievements(c *fiber.Ctx) error {
         refMap[r.MongoAchievementID] = r
     }
 
-    // 4. Ambil Details dari Mongo
-    details, err := s.mongoRepo.FindAllDetails(ctx, mongoIDs)
-    if err != nil {
-        return c.Status(500).JSON(fiber.Map{"error": "Failed to fetch details form Mongo"})
-    }
+    details, _ := s.mongoRepo.FindAllDetails(ctx, mongoIDs)
 
-    // 5. Gabungkan Data (Merge)
-    var finalResult []map[string]interface{}
+    // 5. GABUNGKAN DATA
+    var data []interface{}
     for _, d := range details {
         mongoIDHex := d.ID.Hex()
         if ref, exists := refMap[mongoIDHex]; exists {
-            finalResult = append(finalResult, map[string]interface{}{
-                "id":             ref.ID,        // ID Postgres (Public ID)
-                "status":         ref.Status,    // Status Approval
+            data = append(data, map[string]interface{}{
+                "id":             ref.ID,
+                "status":         ref.Status,
                 "submittedAt":    ref.SubmittedAt,
-                "title":          d.Title,       // Detail dari Mongo
+                "title":          d.Title,
                 "type":           d.AchievementType,
                 "points":         d.Points,
                 "createdAt":      ref.CreatedAt,
+                "studentId":      ref.StudentID,
             })
         }
     }
 
-    return c.JSON(finalResult)
+    // 6. RETURN PAGINATED RESPONSE
+    totalPages := int(math.Ceil(float64(totalData) / float64(query.Limit)))
+    
+    return c.JSON(modelPg.PaginatedResponse{
+        Data: data,
+        Meta: modelPg.PaginationMeta{
+            CurrentPage: query.Page,
+            TotalPage:   totalPages,
+            TotalData:   int(totalData),
+            Limit:       query.Limit,
+        },
+    })
 }
 
 // === Endpoint Logic: GET DETAIL ===
@@ -228,7 +281,6 @@ func (s *AchievementService) GetAchievementDetail(c *fiber.Ctx) error {
     }
 
     // 4. Validasi Kepemilikan (PENTING untuk keamanan)
-    // Jika role Mahasiswa, pastikan achievement ini milik dia
     if role == "mahasiswa" {
         // Ambil studentID user yang login
         currentStudentID, err := s.pgRepo.GetStudentByUserID(ctx, userID)
@@ -239,6 +291,36 @@ func (s *AchievementService) GetAchievementDetail(c *fiber.Ctx) error {
         // Bandingkan StudentID di Prestasi vs StudentID User Login
         if ref.StudentID != currentStudentID {
             return c.Status(403).JSON(fiber.Map{"error": "Forbidden: You cannot view this achievement"})
+        }
+    } else if role == "dosen_wali" {
+        // 1. Ambil ID Dosen
+        lecturerID, err := s.lecturer.GetLecturerByUserID(ctx, userID)
+        if err != nil {
+            return c.Status(403).JSON(fiber.Map{"error": "Lecturer profile not found"})
+        }
+
+        // 2. Ambil Daftar Mahasiswa Bimbingan
+        // (Kita gunakan method yang sudah ada di LecturerRepository)
+        advisees, err := s.lecturer.GetAdvisees(lecturerID)
+        if err != nil {
+            return c.Status(500).JSON(fiber.Map{"error": "Failed to check advisee relationship"})
+        }
+
+        // 3. Cek apakah pemilik prestasi ada di daftar bimbingan
+        isAdvisee := false
+        for _, mhs := range advisees {
+            if mhs.ID == ref.StudentID {
+                isAdvisee = true
+                break
+            }
+        }
+
+        if !isAdvisee {
+            return c.Status(403).JSON(fiber.Map{"error": "Forbidden: This student is not your advisee"})
+        }
+
+        if ref.Status == "draft" {
+            return c.Status(403).JSON(fiber.Map{"error": "Forbidden: You cannot view draft achievements of your advisees"})
         }
     }
 
@@ -288,7 +370,7 @@ func (s *AchievementService) SubmitAchievement(c *fiber.Ctx) error {
     }
 
     // 5. Update Status jadi 'submitted' [cite: 195]
-    // verifiedBy nil karena belum diverifikasi
+
     err = s.pgRepo.SubmitReference(ctx, achievementID) 
     if err != nil {
         return c.Status(500).JSON(fiber.Map{"error": "Failed to submit achievement"+ err.Error(),})
@@ -297,9 +379,6 @@ func (s *AchievementService) SubmitAchievement(c *fiber.Ctx) error {
     return c.JSON(fiber.Map{"status": "success", "message": "Achievement submitted for verification"})
 }
 
-// [TAMBAHKAN method-method ini ke struct AchievementService]
-
-// === FR-005: DELETE ACHIEVEMENT (Draft Only) ===
 func (s *AchievementService) DeleteAchievement(c *fiber.Ctx) error {
     ctx := c.Context()
     
@@ -354,7 +433,7 @@ func (s *AchievementService) VerifyAchievement(c *fiber.Ctx) error {
     if err != nil { return c.Status(401).JSON(fiber.Map{"error": err.Error()}) }
 
     // [FIX BUG LOGIKA] Panggil repository lecturer untuk memastikan user adalah Dosen
-    // Gunakan underscore (_) karena kita tidak butuh ID lecturer, hanya butuh cek error
+    
     _, err = s.lecturer.GetLecturerByUserID(ctx, userID) 
     if err != nil { return c.Status(403).JSON(fiber.Map{"error": "User is not a lecturer"}) }
 
@@ -362,7 +441,7 @@ func (s *AchievementService) VerifyAchievement(c *fiber.Ctx) error {
     ref, err := s.pgRepo.GetReferenceByID(ctx, achievementID)
     if err != nil { return c.Status(404).JSON(fiber.Map{"error": "Achievement not found"}) }
 
-    // [FIX UNUSED VAR 'ref'] Gunakan variabel 'ref' untuk validasi status sesuai SRS
+   
     if ref.Status != "submitted" {
         return c.Status(400).JSON(fiber.Map{"error": "Achievement must be in 'submitted' status to be verified"})
     }

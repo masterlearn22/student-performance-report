@@ -7,12 +7,13 @@ import (
     "time"
     models "student-performance-report/app/models/postgresql"
     "github.com/google/uuid"
+    "github.com/lib/pq"
 )
 
 type AchievementRepoPostgres interface {
     Create(ctx context.Context, ref models.AchievementReference) (uuid.UUID, error)
     GetStudentByUserID(ctx context.Context, userID uuid.UUID) (uuid.UUID, error)
-    GetAllReferences(ctx context.Context, filter map[string]interface{}) ([]models.AchievementReference, error)
+    GetAllReferences(ctx context.Context, filter map[string]interface{}, limit, offset int, sort string) ([]models.AchievementReference, int64, error)
     GetReferenceByID(ctx context.Context, id uuid.UUID) (models.AchievementReference, error)
     DeleteReference(ctx context.Context, id uuid.UUID) error
     UpdateStatus(ctx context.Context, id uuid.UUID, status string, verifiedBy *uuid.UUID, note string) error
@@ -51,40 +52,95 @@ func (r *achievementRepoPostgres) Create(ctx context.Context, ref models.Achieve
     return newID, err
 }
 
-func (r *achievementRepoPostgres) GetAllReferences(ctx context.Context, filter map[string]interface{}) ([]models.AchievementReference, error) {
-    query := `
-    SELECT id, student_id, mongo_achievement_id, status,submitted_at, created_at 
-    FROM achievement_references 
-    WHERE status != 'deleted'
-    `
+func (r *achievementRepoPostgres) GetAllReferences(ctx context.Context, filter map[string]interface{}, limit, offset int, sort string) ([]models.AchievementReference, int64, error) {
+    // 1. Bangun Query Dasar (WHERE Clause)
+    // Kita pisahkan bagian WHERE agar bisa dipakai untuk hitung total (COUNT) dan ambil data (SELECT)
+    whereClause := " WHERE status != 'deleted'"
     var args []interface{}
     argCount := 1
 
-    // Filter Student ID
+    // Filter Student ID (Single)
     if val, ok := filter["student_id"]; ok {
-        query += fmt.Sprintf(" AND student_id = $%d", argCount)
+        whereClause += fmt.Sprintf(" AND student_id = $%d", argCount)
         args = append(args, val)
         argCount++
     }
 
-    query += ` ORDER BY created_at DESC`
+    // Filter Student IDs (Array)
+    if val, ok := filter["student_ids"]; ok {
+        whereClause += fmt.Sprintf(" AND student_id = ANY($%d)", argCount)
+        args = append(args, pq.Array(val))
+        argCount++
+    }
 
+    // Filter Status (Single or Array)
+    if val, ok := filter["status"]; ok {
+        if statuses, isSlice := val.([]string); isSlice {
+            whereClause += fmt.Sprintf(" AND status = ANY($%d)", argCount)
+            args = append(args, pq.Array(statuses))
+        } else {
+            whereClause += fmt.Sprintf(" AND status = $%d", argCount)
+            args = append(args, val)
+        }
+        argCount++
+    }
+
+    // 2. Hitung Total Data (Count Query)
+    // Penting untuk pagination di frontend (misal: Page 1 of 10)
+    var totalCount int64
+    countQuery := `SELECT COUNT(*) FROM achievement_references` + whereClause
+    
+    err := r.db.QueryRowContext(ctx, countQuery, args...).Scan(&totalCount)
+    if err != nil {
+        return nil, 0, err
+    }
+
+    // 3. Bangun Query Data (Select Query)
+    query := `
+        SELECT id, student_id, mongo_achievement_id, status, submitted_at, verified_at, created_at 
+        FROM achievement_references 
+    ` + whereClause
+
+    // 4. Tambahkan Sorting
+    // Default: created_at DESC (Terbaru)
+    if sort == "oldest" {
+        query += ` ORDER BY created_at ASC`
+    } else {
+        query += ` ORDER BY created_at DESC`
+    }
+
+    // 5. Tambahkan Pagination (Limit & Offset)
+    if limit > 0 {
+        query += fmt.Sprintf(" LIMIT $%d OFFSET $%d", argCount, argCount+1)
+        args = append(args, limit, offset)
+    }
+
+    // 6. Eksekusi Query
     rows, err := r.db.QueryContext(ctx, query, args...)
     if err != nil {
-        return nil, err
+        return nil, 0, err
     }
     defer rows.Close()
 
     var results []models.AchievementReference
     for rows.Next() {
         var ref models.AchievementReference
-        // Pastikan urutan Scan sesuai SELECT
-        if err := rows.Scan(&ref.ID, &ref.StudentID, &ref.MongoAchievementID, &ref.Status, &ref.SubmittedAt, &ref.CreatedAt); err != nil {
-            return nil, err
+        err := rows.Scan(
+            &ref.ID, 
+            &ref.StudentID, 
+            &ref.MongoAchievementID, 
+            &ref.Status, 
+            &ref.SubmittedAt, 
+            &ref.VerifiedAt,
+            &ref.CreatedAt,
+        )
+        if err != nil {
+            return nil, 0, err
         }
         results = append(results, ref)
     }
-    return results, nil
+
+    return results, totalCount, nil
 }
 
 func (r *achievementRepoPostgres) GetReferenceByID(ctx context.Context, id uuid.UUID) (models.AchievementReference, error) {
