@@ -14,6 +14,14 @@ func NewLecturerService(r repo.LecturerRepository) *LecturerService {
 	return &LecturerService{lecturerRepo: r}
 }
 
+// GetAllLecturers godoc
+// @Summary Get All Lecturers
+// @Description Get list of all lecturers
+// @Tags Students & Lecturers
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {array} models.Lecturer
+// @Router /lecturers [get]
 func (s *LecturerService) GetAllLecturers(c *fiber.Ctx) error {
 	data, err := s.lecturerRepo.GetAllLecturers()
 	if err != nil {
@@ -33,6 +41,15 @@ func (s *LecturerService) GetLecturerByID(c *fiber.Ctx) error {
 	return c.JSON(lecturer)
 }
 
+// GetAdvisees godoc
+// @Summary Get Lecturer Advisees
+// @Description Get list of students advised by this lecturer
+// @Tags Students & Lecturers
+// @Security BearerAuth
+// @Param id path string true "Lecturer UUID"
+// @Produce json
+// @Success 200 {array} models.Student
+// @Router /lecturers/{id}/advisees [get]
 func (s *LecturerService) GetAdvisees(c *fiber.Ctx) error {
 	id, _ := uuid.Parse(c.Params("id"))
 

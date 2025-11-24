@@ -16,6 +16,14 @@ func NewStudentService(r repo.StudentRepository, a mongoRepo.AchievementReposito
     return &StudentService{studentRepo: r, achievementRepo: a}
 }
 
+// GetAllStudents godoc
+// @Summary Get All Students
+// @Description Get list of all students
+// @Tags Students & Lecturers
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {array} models.Student
+// @Router /students [get]
 func (s *StudentService) GetAllStudents(c *fiber.Ctx) error {
     data, err := s.studentRepo.GetAllStudents(c.Context())
     if err != nil {
@@ -24,6 +32,16 @@ func (s *StudentService) GetAllStudents(c *fiber.Ctx) error {
     return c.JSON(data)
 }
 
+// GetStudentByID godoc
+// @Summary Get Student by ID
+// @Description Get specific student details
+// @Tags Students & Lecturers
+// @Security BearerAuth
+// @Produce json
+// @Param id path string true "Student UUID"
+// @Success 200 {object} models.Student
+// @Failure 404 {object} map[string]interface{}
+// @Router /students/{id} [get]
 func (s *StudentService) GetStudentByID(c *fiber.Ctx) error {
     id, err := uuid.Parse(c.Params("id"))
     if err != nil {
@@ -38,6 +56,15 @@ func (s *StudentService) GetStudentByID(c *fiber.Ctx) error {
     return c.JSON(student)
 }
 
+// GetStudentAchievements godoc
+// @Summary Get Student Achievements
+// @Description Get achievements list for a specific student
+// @Tags Students & Lecturers
+// @Security BearerAuth
+// @Produce json
+// @Param id path string true "Student UUID"
+// @Success 200 {array} models.Achievement
+// @Router /students/{id}/achievements [get]
 func (s *StudentService) GetStudentAchievements(c *fiber.Ctx) error {
     id, err := uuid.Parse(c.Params("id"))
     if err != nil {
@@ -51,6 +78,16 @@ func (s *StudentService) GetStudentAchievements(c *fiber.Ctx) error {
     return c.JSON(achievements)
 }
 
+// UpdateAdvisor godoc
+// @Summary Update Student Advisor
+// @Description Assign or change lecturer advisor for a student
+// @Tags Students & Lecturers
+// @Security BearerAuth
+// @Accept json
+// @Param id path string true "Student UUID"
+// @Param request body object{lecturerId=string} true "Lecturer UUID"
+// @Success 200 {object} map[string]string
+// @Router /students/{id}/advisor [put]
 func (s *StudentService) UpdateAdvisor(c *fiber.Ctx) error {
     var body struct {
         LecturerID string `json:"lecturerId"`

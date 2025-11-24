@@ -6,13 +6,10 @@ import (
 	"errors"
 	"net/http/httptest"
 	"testing"
-
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
-	// "github.com/stretchr/testify/mock"
-	"golang.org/x/crypto/bcrypt" // Digunakan untuk generate hash valid
-
+	"golang.org/x/crypto/bcrypt" 
 	models "student-performance-report/app/models/postgresql"
 	"student-performance-report/app/repository/mocks"
 	"student-performance-report/app/service/postgresql"
@@ -22,13 +19,6 @@ import (
 
 func setupAuthServiceTest() (*service.AuthService, *mocks.MockUserRepo) {
 	mockUserRepo := new(mocks.MockUserRepo)
-	// Pastikan nama service struct exported (AuthService) atau sesuaikan (authService)
-	// Di kode Anda structnya 'authService' (huruf kecil), tapi Constructornya 'NewAuthService'
-	// Go akan mengembalikan interface/pointer yang sesuai.
-	// Jika struct authService private, Anda tidak bisa mengetik '*service.authService' di sini,
-	// jadi kita bisa gunakan 'interface{}' atau ubah struct di service jadi 'AuthService'.
-	// Asumsi di sini: NewAuthService mengembalikan tipe yang bisa diakses.
-	
 	svc := service.NewAuthService(mockUserRepo)
 	return svc, mockUserRepo
 }
@@ -53,7 +43,7 @@ func TestLogin(t *testing.T) {
 		mockUser := &models.User{
 			ID:           uuid.New(),
 			Username:     "admin",
-			PasswordHash: passwordHash, // Hash asli
+			PasswordHash: passwordHash, 
 			FullName:     "Admin User",
 			RoleID:       roleID,
 			IsActive:     true,
@@ -70,7 +60,7 @@ func TestLogin(t *testing.T) {
 
 		payload := map[string]string{
 			"username": "admin",
-			"password": passwordRaw, // Password asli (belum hash)
+			"password": passwordRaw, 
 		}
 		body, _ := json.Marshal(payload)
 		req := httptest.NewRequest("POST", "/login", bytes.NewBuffer(body))
@@ -150,7 +140,7 @@ func TestLogin(t *testing.T) {
 		mockUser := &models.User{
 			Username:     "inactive_user",
 			PasswordHash: string(hashedBytes),
-			IsActive:     false, // Akun tidak aktif
+			IsActive:     false, 
 		}
 
 		mockRepo.On("GetByUsername", "inactive_user").Return(mockUser, "student", nil)
@@ -164,7 +154,7 @@ func TestLogin(t *testing.T) {
 
 		resp, _ := app.Test(req)
 
-		assert.Equal(t, 403, resp.StatusCode) // Forbidden
+		assert.Equal(t, 403, resp.StatusCode) 
 	})
 }
 
@@ -193,7 +183,7 @@ func TestProfile(t *testing.T) {
 		// Expectations
 		mockRepo.On("GetByID", userID).Return(mockUser, nil)
 		mockRepo.On("GetPermissionsByRoleID", roleID).Return(permissions, nil)
-		mockRepo.On("GetByUsername", "myprofile").Return(mockUser, "student", nil) // Service memanggil ini untuk dapat roleName
+		mockRepo.On("GetByUsername", "myprofile").Return(mockUser, "student", nil) 
 
 		app.Get("/profile", svc.Profile)
 

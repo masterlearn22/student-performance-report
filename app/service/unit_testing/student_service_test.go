@@ -11,12 +11,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-
-	// Import Models & Service
 	models "student-performance-report/app/models/postgresql"
 	"student-performance-report/app/service/postgresql"
-	
-	// Import Mocks
 	"student-performance-report/app/repository/mocks"
 	modelMongo "student-performance-report/app/models/mongodb"
 )
@@ -26,8 +22,6 @@ import (
 func setupStudentServiceTest() (*service.StudentService, *mocks.MockStudentRepo, *mocks.MockAchievementRepo) {
 	mockStudentRepo := new(mocks.MockStudentRepo)
 	mockAchievementRepo := new(mocks.MockAchievementRepo)
-
-	// Inject kedua mock repo ke service
 	svc := service.NewStudentService(mockStudentRepo, mockAchievementRepo)
 
 	return svc, mockStudentRepo, mockAchievementRepo
@@ -45,13 +39,10 @@ func TestGetAllStudents(t *testing.T) {
 		svc, mockStudentRepo, _ := setupStudentServiceTest()
 		app := setupStudentApp()
 
-		// Dummy Data
 		mockData := []models.Student{
 			{ID: uuid.New(), StudentID: "12345"},
 			{ID: uuid.New(), StudentID: "67890"},
 		}
-
-		// Expectation: Context apa saja (mock.Anything), return mockData
 		mockStudentRepo.On("GetAllStudents", mock.Anything).Return(mockData, nil)
 
 		app.Get("/students", svc.GetAllStudents)
@@ -131,18 +122,14 @@ func TestGetStudentAchievements(t *testing.T) {
 		app := setupStudentApp()
 
 		targetID := uuid.New()
-		// Mock data achievement (sesuaikan tipe data ini dengan model mongoDB Anda)
 		mockAchievements := []modelMongo.Achievement{
     {
-        // Hapus tanda kutip di key, dan gunakan Huruf Besar (sesuai definisi Struct)
         AchievementType: "competition",
         Title:           "Juara 1 Hackathon Nasional Gemastik 2025",
         Description:     "Memenangkan medali emas kategori Pengembangan Perangkat Lunak dalam kompetisi tingkat nasional.",
         Tags:            []string{"coding", "hackathon", "software engineering"},
         Points:          150,
-        
-        // Field 'details' kemungkinan besar adalah map[string]interface{}
-        // Jadi harus diinisialisasi sebagai map:
+
         Details: modelMongo.AchievementDetails{
             CompetitionName:  "Gemastik 2025",
             CompetitionLevel: "national",
@@ -191,12 +178,10 @@ func TestUpdateAdvisor(t *testing.T) {
 		studentID := uuid.New()
 		lecturerID := uuid.New()
 
-		// Expectation
 		mockStudentRepo.On("UpdateAdvisor", mock.Anything, studentID, lecturerID).Return(nil)
 
 		app.Put("/students/:id/advisor", svc.UpdateAdvisor)
 
-		// Request Body
 		bodyPayload := map[string]string{"lecturerId": lecturerID.String()}
 		bodyBytes, _ := json.Marshal(bodyPayload)
 
