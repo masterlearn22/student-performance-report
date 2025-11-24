@@ -13,23 +13,14 @@ import (
 	"student-performance-report/database"
 	FiberApp "student-performance-report/fiber"
 	route "student-performance-report/route"
-
-	
 )
 
 func main() {
 
 	// 1. Load .env file
-    config.LoadEnv() // Load file .env
-    // host := os.Getenv("DB_HOST")
-    // if host == "" {
-    //     fmt.Println(".env gagal diload atau DB_HOST tidak ditemukan")
-    // } else {
-    //     fmt.Println(".env berhasil diload. DB_HOST =", host)
-    // }
+    config.LoadEnv() 
 
 	//2. Connect to Database
-
 	// Connect to PostgreSQL
 	database.ConnectPostgres()
 	defer database.PostgresDB.Close()
@@ -58,8 +49,6 @@ func main() {
 			log.Printf("Server stopped: %v", err)
 		}
 	}()
-
-	
 
 	// 6 Graceful shutdown
 	quit := make(chan os.Signal, 1)

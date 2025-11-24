@@ -6,7 +6,6 @@ import (
 	
 )
 
-//Setup Fiber menginisialisasi dan mengatur server Fiber
 func SetupFiber() *fiber.App {
 	app := fiber.New(fiber.Config{
 		BodyLimit: 10 * 1024 * 1024,
@@ -24,6 +23,6 @@ func SetupFiber() *fiber.App {
 		},
 	
 	})
-	fmt.Println("✅ Fiber is running")
+	fmt.Println("Fiber is running")
 	return app
 }

@@ -3,23 +3,17 @@ package repository
 import (
 	"database/sql"
 	"errors"
-
 	models "student-performance-report/app/models/postgresql"
 	"github.com/google/uuid"
 )
 
 type AdminRepository interface {
-	// User CRUD
 	CreateUser(user *models.User) error
 	UpdateUser(user *models.User) error
 	DeleteUser(id uuid.UUID) error
 	GetUserByID(id uuid.UUID) (*models.User, error)
 	GetAllUsers() ([]models.User, error)
-
-	// Roles
 	AssignRole(userID uuid.UUID, roleID uuid.UUID) error
-
-	// Student / Lecturer Profile
 	SetStudentProfile(profile *models.Student) error
 	SetLecturerProfile(profile *models.Lecturer) error
 	SetAdvisor(studentID, lecturerID uuid.UUID) error
@@ -32,10 +26,6 @@ type adminRepository struct {
 func NewAdminRepository(db *sql.DB) AdminRepository {
 	return &adminRepository{db: db}
 }
-
-//////////////////////////////////////////////////
-// USER CRUD
-//////////////////////////////////////////////////
 
 func (r *adminRepository) CreateUser(user *models.User) error {
 	query := `
@@ -159,18 +149,10 @@ func (r *adminRepository) GetAllUsers() ([]models.User, error) {
 	return list, nil
 }
 
-//////////////////////////////////////////////////
-// ROLE ASSIGN
-//////////////////////////////////////////////////
-
 func (r *adminRepository) AssignRole(userID uuid.UUID, roleID uuid.UUID) error {
 	_, err := r.db.Exec(`UPDATE users SET role_id=$1 WHERE id=$2`, roleID, userID)
 	return err
 }
-
-//////////////////////////////////////////////////
-// STUDENT PROFILE
-//////////////////////////////////////////////////
 
 func (r *adminRepository) SetStudentProfile(s *models.Student) error {
 	query := `
@@ -190,10 +172,6 @@ func (r *adminRepository) SetStudentProfile(s *models.Student) error {
 	return err
 }
 
-//////////////////////////////////////////////////
-// LECTURER PROFILE
-//////////////////////////////////////////////////
-
 func (r *adminRepository) SetLecturerProfile(l *models.Lecturer) error {
 	query := `
 		INSERT INTO lecturers (id, user_id, lecturer_id, department, created_at)
@@ -209,10 +187,6 @@ func (r *adminRepository) SetLecturerProfile(l *models.Lecturer) error {
 	)
 	return err
 }
-
-//////////////////////////////////////////////////
-// SET ADVISOR
-//////////////////////////////////////////////////
 
 func (r *adminRepository) SetAdvisor(studentID, lecturerID uuid.UUID) error {
 	query := `UPDATE students SET advisor_id=$1 WHERE user_id=$2`

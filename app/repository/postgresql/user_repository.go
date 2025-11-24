@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"student-performance-report/app/models/postgresql"
-	
 	"github.com/google/uuid"
 )
 
@@ -22,7 +21,6 @@ func NewUserRepository(db *sql.DB) UserRepository {
 	return &userRepository{db: db}
 }
 
-// GetByUsername mengambil data user beserta nama role-nya via JOIN
 func (r *userRepository) GetByUsername(username string) (*models.User, string, error) {
 	var user models.User
 	var roleName string
@@ -47,7 +45,7 @@ func (r *userRepository) GetByUsername(username string) (*models.User, string, e
 		&user.FullName,
 		&user.RoleID,
 		&user.IsActive,
-		&roleName,      // 🔥 Scan ke variabel lokal, bukan struct
+		&roleName,    
 	)
 
 	if err != nil {
@@ -60,8 +58,6 @@ func (r *userRepository) GetByUsername(username string) (*models.User, string, e
 	return &user, roleName, nil
 }
 
-
-// GetPermissionsByRoleID mengambil list permission string berdasarkan Role ID
 func (r *userRepository) GetPermissionsByRoleID(roleID uuid.UUID) ([]string, error) {
 	query := `
 		SELECT p.name 

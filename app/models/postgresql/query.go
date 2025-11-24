@@ -3,9 +3,9 @@ package models
 type PaginationQuery struct {
 	Page   int    `query:"page"`
 	Limit  int    `query:"limit"`
-	Sort   string `query:"sort"`   // created_at_desc, created_at_asc
-	Search string `query:"search"` // Optional: Search by title (butuh join mongo, kompleks)
-	Status string `query:"status"` // Filter status
+	Sort   string `query:"sort"`   
+	Search string `query:"search"` 
+	Status string `query:"status"` 
 }
 
 type PaginationMeta struct {

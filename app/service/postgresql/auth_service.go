@@ -1,12 +1,9 @@
 package service
 
 import (
-
-
 	models "student-performance-report/app/models/postgresql"
 	repo "student-performance-report/app/repository/postgresql"
 	"student-performance-report/utils"
-
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 )
@@ -26,46 +23,38 @@ func (s *authService) Login(c *fiber.Ctx) error {
 		Password string `json:"password"`
 	}
 
-	// Ambil JSON request
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid JSON"})
 	}
 
-	// Cari user berdasarkan username
 	user, roleName, err := s.userRepo.GetByUsername(req.Username)
 	if err != nil {
 		return c.Status(401).JSON(fiber.Map{"error": "invalid username or password"})
 	}
 
-	// Cek password
 	if !utils.CheckPasswordHash(req.Password, user.PasswordHash) {
 		return c.Status(401).JSON(fiber.Map{"error": "invalid username or password"})
 	}
 
-	// Cek apakah user aktif
 	if !user.IsActive {
 		return c.Status(403).JSON(fiber.Map{"error": "account is inactive"})
 	}
 
-	// Ambil permissions user
 	permissions, err := s.userRepo.GetPermissionsByRoleID(user.RoleID)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	// Generate token
 	tokenString, err := utils.GenerateToken(user, roleName, permissions)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	// Generate refresh token
 	refresh, err := utils.GenerateRefreshToken(user)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	// Response
 	return c.JSON(models.LoginResponse{
 		Token:        tokenString,
 		RefreshToken: refresh,

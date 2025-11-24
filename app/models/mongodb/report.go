@@ -1,11 +1,10 @@
 package models
 
-// Struktur Output Statistik Global
 type GlobalStatistics struct {
     TotalAchievements int                    `json:"totalAchievements"`
     PointsDistribution []TopStudent          `json:"topStudents"`
     TypeDistribution   map[string]int        `json:"typeDistribution"`
-    LevelDistribution  map[string]int        `json:"levelDistribution"` // Nasional, Internasional, dll
+    LevelDistribution  map[string]int        `json:"levelDistribution"`
     TrendByYear        map[string]int        `json:"trendByYear"`
 }
 
@@ -16,7 +15,6 @@ type TopStudent struct {
     TotalPoints int    `json:"totalPoints"`
 }
 
-// Struktur Output Statistik Per Mahasiswa
 type StudentStatistics struct {
     StudentName      string         `json:"studentName"`
     TotalPoints      int            `json:"totalPoints"`

@@ -5,34 +5,32 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// Menggabungkan semua kemungkinan field detail dari SRS 3.2.1
 type AchievementDetails struct {
-	// Competition [cite: 116-119]
 	CompetitionName  string `bson:"competitionName,omitempty" json:"competitionName,omitempty"`
-	CompetitionLevel string `bson:"competitionLevel,omitempty" json:"competitionLevel,omitempty"` // international, national, etc
+	CompetitionLevel string `bson:"competitionLevel,omitempty" json:"competitionLevel,omitempty"`
 	Rank             int    `bson:"rank,omitempty" json:"rank,omitempty"`
-	MedalType        string `bson:"medalType,omitempty" json:"medalType,omitempty"` // gold, silver, bronze
+	MedalType        string `bson:"medalType,omitempty" json:"medalType,omitempty"` 
 
-	// Publication [cite: 121-125]
+	// Publication
 	PublicationType  string   `bson:"publicationType,omitempty" json:"publicationType,omitempty"`
 	PublicationTitle string   `bson:"publicationTitle,omitempty" json:"publicationTitle,omitempty"`
 	Authors          []string `bson:"authors,omitempty" json:"authors,omitempty"`
 	Publisher        string   `bson:"publisher,omitempty" json:"publisher,omitempty"`
 	ISSN             string   `bson:"issn,omitempty" json:"issn,omitempty"`
 
-	// Organization [cite: 127-131]
+	// Organization 
 	OrganizationName string    `bson:"organizationName,omitempty" json:"organizationName,omitempty"`
 	Position         string    `bson:"position,omitempty" json:"position,omitempty"`
 	StartDate        time.Time `bson:"startDate,omitempty" json:"startDate,omitempty"`
 	EndDate          time.Time `bson:"endDate,omitempty" json:"endDate,omitempty"`
 
-	// Certification [cite: 133-136]
+	// Certification 
 	CertificationName   string    `bson:"certificationName,omitempty" json:"certificationName,omitempty"`
 	IssuedBy            string    `bson:"issuedBy,omitempty" json:"issuedBy,omitempty"`
 	CertificationNumber string    `bson:"certificationNumber,omitempty" json:"certificationNumber,omitempty"`
 	ValidUntil          time.Time `bson:"validUntil,omitempty" json:"validUntil,omitempty"`
 
-	// General Fields [cite: 138-141]
+	// Other
 	EventDate time.Time `bson:"eventDate,omitempty" json:"eventDate,omitempty"`
 	Location  string    `bson:"location,omitempty" json:"location,omitempty"`
 	Organizer string    `bson:"organizer,omitempty" json:"organizer,omitempty"`
@@ -48,8 +46,8 @@ type Attachment struct {
 
 type Achievement struct {
 	ID              primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	StudentID       string             `bson:"studentId" json:"studentId"` // Disimpan sebagai string UUID dari Postgres
-	AchievementType string             `bson:"achievementType" json:"achievementType"` // academic, competition, etc
+	StudentID       string             `bson:"studentId" json:"studentId"` 
+	AchievementType string             `bson:"achievementType" json:"achievementType"` 
 	Title           string             `bson:"title" json:"title"`
 	Description     string             `bson:"description" json:"description"`
 	Details         AchievementDetails `bson:"details" json:"details"`

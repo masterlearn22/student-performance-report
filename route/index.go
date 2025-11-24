@@ -2,32 +2,21 @@ package route
 
 import (
     "database/sql"
-
     "github.com/gofiber/fiber/v2"
-
-    // Import Repositories
     repoMongo "student-performance-report/app/repository/mongodb"
     repoPostgre "student-performance-report/app/repository/postgresql"
-
-    // Import Services
     mongoService "student-performance-report/app/service/mongodb"
     postgreService "student-performance-report/app/service/postgresql"
-
     "student-performance-report/database"
     "student-performance-report/middleware"
 )
 
 func SetupPostgresRoutes(app *fiber.App, db *sql.DB) {
-    // =================================================================
-    // DEPENDENCY INJECTION
-    // =================================================================
-
     // Repositories
     userRepo := repoPostgre.NewUserRepository(db)
     adminRepo := repoPostgre.NewAdminRepository(db)
     studentRepo := repoPostgre.NewStudentRepository(db)
     lecturerRepo := repoPostgre.NewLecturerRepository(db)
-
     achRepoPg := repoPostgre.NewAchievementRepoPostgres(db)
     achRepoMongo := repoMongo.NewAchievementRepository(database.MongoDB)
 
@@ -36,35 +25,29 @@ func SetupPostgresRoutes(app *fiber.App, db *sql.DB) {
     adminService := postgreService.NewAdminService(adminRepo, userRepo)
     lecturerService := postgreService.NewLecturerService(lecturerRepo)
     studentService := postgreService.NewStudentService(studentRepo, achRepoMongo)
-    
-    // Note: AchievementService inject 3 dependencies (Mongo, Postgres, Lecturer)
     achievementService := mongoService.NewAchievementService(achRepoMongo, achRepoPg, lecturerRepo)
-
-    // Report Service (Hybrid: Mongo Stats + Postgres Student Names)
 	reportService := mongoService.NewReportService(achRepoMongo, studentRepo)
 
     // Static Files Config
-    app.Static("/uploads", "./uploads")
-
-    // =================================================================
-    // ROUTE DEFINITIONS
-    // =================================================================
-    
+    app.Static("/uploads", "./uploads")   
     api := app.Group("/api/v1")
 
-    // ---------------------------------------------------------
     // 5.1 Authentication
-    // ---------------------------------------------------------
     auth := api.Group("/auth")
     auth.Post("/login", authService.Login)
     auth.Post("/refresh", authService.Refresh)
-    auth.Post("/logout", middleware.AuthRequired(), authService.Logout)
-    auth.Get("/profile", middleware.AuthRequired(), authService.Profile)
+    auth.Post("/logout",
+        middleware.AuthRequired(),
+        authService.Logout)
+    auth.Get("/profile",
+        middleware.AuthRequired(),  
+        authService.Profile)
 
-    // ---------------------------------------------------------
-    // 5.2 Users (Admin Only)
-    // ---------------------------------------------------------
-    users := api.Group("/users", middleware.AuthRequired(), middleware.RoleAllowed("admin"))
+    // 5.2 Users 
+    users := api.Group("/users", 
+        middleware.AuthRequired(), 
+        middleware.RoleAllowed("admin"))
+
     users.Get("/", adminService.GetAllUsers)
     users.Get("/:id", adminService.GetUserByID)
     users.Post("/", adminService.CreateUser)
@@ -72,12 +55,8 @@ func SetupPostgresRoutes(app *fiber.App, db *sql.DB) {
     users.Delete("/:id", adminService.DeleteUser)
     users.Put("/:id/role", adminService.AssignRole)
 
-    // ---------------------------------------------------------
     // 5.4 Achievements
-    // ---------------------------------------------------------
     ach := api.Group("/achievements", middleware.AuthRequired())
-
-    // General Read (All Roles with Permission)
     ach.Get("/", 
         middleware.PermissionRequired("achievement:read"), 
         achievementService.GetAllAchievements)
@@ -90,9 +69,7 @@ func SetupPostgresRoutes(app *fiber.App, db *sql.DB) {
         middleware.PermissionRequired("achievement:read"), 
         achievementService.GetAchievementHistory)
 
-    // Mahasiswa Operations
     mhsMiddleware := middleware.RoleAllowed("mahasiswa")
-    
     ach.Post("/", 
         mhsMiddleware, 
         middleware.PermissionRequired("achievement:create"), 
@@ -118,10 +95,8 @@ func SetupPostgresRoutes(app *fiber.App, db *sql.DB) {
         middleware.PermissionRequired("achievement:update"), 
         achievementService.UploadAttachments)
 
-    // Dosen Wali Operations
     dosenMiddleware := middleware.RoleAllowed("dosen_wali")
     verifyPermission := middleware.PermissionRequired("achievement:verify")
-
     ach.Post("/:id/verify", 
         dosenMiddleware, 
         verifyPermission, 
@@ -132,31 +107,40 @@ func SetupPostgresRoutes(app *fiber.App, db *sql.DB) {
         verifyPermission, 
         achievementService.RejectAchievement)
 
-    // ---------------------------------------------------------
     // 5.5 Students & Lecturers
-    // ---------------------------------------------------------
-    // Students
-    api.Get("/students", middleware.AuthRequired(), studentService.GetAllStudents)
-    api.Get("/students/:id", middleware.AuthRequired(), studentService.GetStudentByID)
-    api.Get("/students/:id/achievements", middleware.AuthRequired(), studentService.GetStudentAchievements)
-    api.Put("/students/:id/advisor", middleware.AuthRequired(), studentService.UpdateAdvisor)
+    api.Get("/students", 
+        middleware.AuthRequired(),
+        studentService.GetAllStudents)
 
-    // Lecturers
-    api.Get("/lecturers", middleware.AuthRequired(), lecturerService.GetAllLecturers)
-    api.Get("/lecturers/:id/advisees", middleware.AuthRequired(), lecturerService.GetAdvisees)
+    api.Get("/students/:id", 
+        middleware.AuthRequired(), 
+        studentService.GetStudentByID)
 
+    api.Get("/students/:id/achievements", 
+        middleware.AuthRequired(), 
+        studentService.GetStudentAchievements)
 
-    // ---------------------------------------------------------
+    api.Put("/students/:id/advisor", 
+        middleware.AuthRequired(), 
+        studentService.UpdateAdvisor)
+
+    api.Get("/lecturers", 
+        middleware.AuthRequired(), 
+        lecturerService.GetAllLecturers)
+
+    api.Get("/lecturers/:id/advisees", 
+        middleware.AuthRequired(), 
+        lecturerService.GetAdvisees)
+
 	// 5.8 Reports & Analytics (NEW)
-	// ---------------------------------------------------------
-	reports := api.Group("/reports", middleware.AuthRequired())
-
-	// Global Stats (Admin Only)
+	reports := api.Group("/reports", 
+    middleware.AuthRequired())
+        middleware.AuthRequired()
+        
 	reports.Get("/statistics",
 		middleware.RoleAllowed("admin"),
 		reportService.GetStatistics)
 
-	// Student Stats (Mahasiswa/Dosen/Admin)
 	reports.Get("/student/:id",
 		reportService.GetStudentReport)
 }

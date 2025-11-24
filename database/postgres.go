@@ -5,13 +5,10 @@ import (
 	"os"
 	"fmt"
 	"database/sql"
-
-	_ "github.com/lib/pq" // PostgreSQL driver
+	_ "github.com/lib/pq" 
 )
 
 var PostgresDB *sql.DB
-
-// ConnectDB menginisialisasi koneksi ke database
 func ConnectPostgres() {
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
 		os.Getenv("DB_HOST"),
@@ -26,6 +23,6 @@ func ConnectPostgres() {
 	if err != nil {
 		log.Fatal("Failed to connect to PostgreSQL:", err)
 	}
-	fmt.Println("✅ Connected to PostgreSQL")
+	fmt.Println("Connected to PostgreSQL")
 	fmt.Println("DB Postgresql :", os.Getenv("DB_NAME"))
 }

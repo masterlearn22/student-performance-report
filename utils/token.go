@@ -2,23 +2,14 @@ package utils
 
 import (
 	"errors"
-	// "fmt"
 	"os"
 	"time"
-
-	// "fmt"
 	"student-performance-report/config"
-
 	"student-performance-report/app/models/postgresql"
-
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// GenerateToken membuat string token JWT lengkap dengan claims
 func GenerateToken(user *models.User, roleName string, permissions []string) (string, error) {
-	// Ambil secret dari .env
-	
-	// Set waktu expired (misal 24 jam)
 	jwtCfg := config.LoadJWT()
 
 	claims := &models.JWTClaims{
@@ -38,7 +29,6 @@ func GenerateToken(user *models.User, roleName string, permissions []string) (st
 }
 
 func ValidateToken(tokenString string) (*models.JWTClaims, error) {
-	// fmt.Println("Validating token:", tokenString)
 	jwtCfg := config.LoadJWT()
 	token, err := jwt.ParseWithClaims(tokenString, &models.JWTClaims{}, func(t *jwt.Token) (interface{}, error) {
 		return jwtCfg.Secret, nil
@@ -59,10 +49,9 @@ func ValidateToken(tokenString string) (*models.JWTClaims, error) {
 func GenerateRefreshToken(user *models.User) (string, error) {
 	secret := os.Getenv("JWT_REFRESH_SECRET")
 	if secret == "" {
-		secret = os.Getenv("JWT_SECRET") // fallback
+		secret = os.Getenv("JWT_SECRET")
 	}
 
-	// Refresh token: masa berlaku 7 hari
 	expiration := time.Now().Add(7 * 24 * time.Hour)
 
 	claims := &models.RefreshClaims{

@@ -20,10 +20,6 @@ func NewAdminService(adminRepo repo.AdminRepository, userRepo repo.UserRepositor
     return &AdminService{adminRepo: adminRepo, userRepo: userRepo}
 }
 
-//////////////////////////////////////////////////
-// GET ALL USERS (ADMIN ONLY)
-//////////////////////////////////////////////////
-
 func (s *AdminService) GetAllUsers(c *fiber.Ctx) error {
     role := c.Locals("role_name").(string)
 
@@ -39,9 +35,6 @@ func (s *AdminService) GetAllUsers(c *fiber.Ctx) error {
     return c.JSON(users)
 }
 
-//////////////////////////////////////////////////
-// GET USER BY ID
-//////////////////////////////////////////////////
 
 func (s *AdminService) GetUserByID(c *fiber.Ctx) error {
     id := c.Params("id")
@@ -53,7 +46,6 @@ func (s *AdminService) GetUserByID(c *fiber.Ctx) error {
         return c.Status(400).JSON(fiber.Map{"error": "invalid user id"})
     }
 
-    // User biasa hanya boleh lihat dirinya sendiri
     if role != "admin" && paramID != userID {
         return c.Status(403).JSON(fiber.Map{"error": "forbidden"})
     }
@@ -65,10 +57,6 @@ func (s *AdminService) GetUserByID(c *fiber.Ctx) error {
 
     return c.JSON(user)
 }
-
-//////////////////////////////////////////////////
-// CREATE USER (ADMIN ONLY)
-//////////////////////////////////////////////////
 
 func (s *AdminService) CreateUser(c *fiber.Ctx) error {
     role := c.Locals("role_name").(string)
@@ -95,10 +83,6 @@ func (s *AdminService) CreateUser(c *fiber.Ctx) error {
 
     return c.JSON(req)
 }
-
-//////////////////////////////////////////////////
-// UPDATE USER
-//////////////////////////////////////////////////
 
 func (s *AdminService) UpdateUser(c *fiber.Ctx) error {
     paramID := c.Params("id")
@@ -128,23 +112,17 @@ func (s *AdminService) UpdateUser(c *fiber.Ctx) error {
     return c.JSON(req)
 }
 
-//////////////////////////////////////////////////
-// DELETE USER
-//////////////////////////////////////////////////
 
 func (s *AdminService) DeleteUser(c *fiber.Ctx) error {
-
 	paramID := c.Params("id")
 	targetID, err := uuid.Parse(paramID)
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid user id"})
 	}
 
-	// claims.UserID adalah uuid.UUID
 	userID := c.Locals("user_id").(uuid.UUID)
 	role := c.Locals("role_name").(string)
 
-	// User non-admin hanya boleh delete miliknya sendiri
 	if role != "admin" && userID != targetID {
 		return c.Status(403).JSON(fiber.Map{"error": "forbidden"})
 	}
@@ -155,11 +133,6 @@ func (s *AdminService) DeleteUser(c *fiber.Ctx) error {
 
 	return c.JSON(fiber.Map{"message": "user deactivated (soft deleted)"})
 }
-
-
-//////////////////////////////////////////////////
-// ASSIGN ROLE (ADMIN ONLY)
-//////////////////////////////////////////////////
 
 func (s *AdminService) AssignRole(c *fiber.Ctx) error {
     role := c.Locals("role_name").(string)

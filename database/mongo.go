@@ -28,7 +28,7 @@ func ConnectMongo() {
 	}
 
 	MongoDB = client.Database(os.Getenv("MONGO_DB_NAME"))
-	fmt.Println("✅ Connected to MongoDB")
+	fmt.Println("Connected to MongoDB")
 	fmt.Println("DB MongoDB :", os.Getenv("MONGO_DB_NAME"))
 	
 }

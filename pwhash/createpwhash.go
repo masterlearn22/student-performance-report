@@ -6,7 +6,7 @@ import (
 )
 
 func main() {
-	password := "1234567890" // ganti jika ingin password lain
+	password := "1234567890" // Password yang akan di-hash
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), 10)
 	if err != nil {

@@ -52,12 +52,10 @@ func (r *achievementRepository) InsertOne(ctx context.Context, achievement model
 	if err != nil {
 		return "", err
 	}
-	// Mengembalikan ID object mongo sebagai string
 	return result.InsertedID.(primitive.ObjectID).Hex(), nil
 }
 
 func (r *achievementRepository) FindAllDetails(ctx context.Context, mongoIDs []string) ([]models.Achievement, error) {
-    // Convert string IDs to ObjectIDs
 	var objectIDs []primitive.ObjectID
 	for _, id := range mongoIDs {
 		oid, _ := primitive.ObjectIDFromHex(id)
@@ -110,9 +108,10 @@ func (r *achievementRepository) DeleteAchievement(ctx context.Context, mongoID s
 
 func (r *achievementRepository) UpdateOne(ctx context.Context, mongoID string, data models.Achievement) error {
     oid, err := primitive.ObjectIDFromHex(mongoID)
-    if err != nil { return err }
+    if err != nil {
+         return err 
+    }
 
-    // Kita update field-field tertentu
     update := bson.M{
         "$set": bson.M{
             "title":           data.Title,
@@ -131,9 +130,10 @@ func (r *achievementRepository) UpdateOne(ctx context.Context, mongoID string, d
 
 func (r *achievementRepository) AddAttachment(ctx context.Context, mongoID string, attachment models.Attachment) error {
     oid, err := primitive.ObjectIDFromHex(mongoID)
-    if err != nil { return err }
+    if err != nil {
+         return err 
+    }
 
-    // Gunakan operator $push untuk menambah item ke array attachments
     update := bson.M{
         "$push": bson.M{"attachments": attachment},
         "$set":  bson.M{"updatedAt": time.Now()},
@@ -150,16 +150,16 @@ func (r *achievementRepository) GetGlobalStats(ctx context.Context) (*models.Glo
         TrendByYear:       make(map[string]int),
     }
 
-    // 1. Agregasi Total per Tipe
     pipelineType := bson.A{
         bson.M{"$group": bson.M{"_id": "$achievementType", "count": bson.M{"$sum": 1}}},
     }
     cursor, _ := r.collection.Aggregate(ctx, pipelineType)
     var typeResults []struct { Id string `bson:"_id"`; Count int `bson:"count"` }
     cursor.All(ctx, &typeResults)
-    for _, res := range typeResults { stats.TypeDistribution[res.Id] = res.Count }
+    for _, res := range typeResults {
+        stats.TypeDistribution[res.Id] = res.Count 
+    }
 
-    // 2. Agregasi per Level Kompetisi (Nested Field)
     pipelineLevel := bson.A{
         bson.M{"$match": bson.M{"details.competitionLevel": bson.M{"$exists": true}}},
         bson.M{"$group": bson.M{"_id": "$details.competitionLevel", "count": bson.M{"$sum": 1}}},
@@ -167,9 +167,10 @@ func (r *achievementRepository) GetGlobalStats(ctx context.Context) (*models.Glo
     cursor, _ = r.collection.Aggregate(ctx, pipelineLevel)
     var levelResults []struct { Id string `bson:"_id"`; Count int `bson:"count"` }
     cursor.All(ctx, &levelResults)
-    for _, res := range levelResults { stats.LevelDistribution[res.Id] = res.Count }
+    for _, res := range levelResults {
+        stats.LevelDistribution[res.Id] = res.Count
+    }
 
-    // 3. Top 5 Mahasiswa by Points
     pipelineTop := bson.A{
         bson.M{"$group": bson.M{"_id": "$studentId", "totalPoints": bson.M{"$sum": "$points"}}},
         bson.M{"$sort": bson.M{"totalPoints": -1}},
@@ -178,8 +179,7 @@ func (r *achievementRepository) GetGlobalStats(ctx context.Context) (*models.Glo
     cursor, _ = r.collection.Aggregate(ctx, pipelineTop)
     var topResults []struct { Id string `bson:"_id"`; TotalPoints int `bson:"totalPoints"` }
     cursor.All(ctx, &topResults)
-    
-    // Map ke struct TopStudent (Nama akan diisi di Service layer via Postgres)
+
     for _, res := range topResults {
         stats.PointsDistribution = append(stats.PointsDistribution, models.TopStudent{
             StudentID:   res.Id,
@@ -192,8 +192,6 @@ func (r *achievementRepository) GetGlobalStats(ctx context.Context) (*models.Glo
 
 func (r *achievementRepository) GetStudentStats(ctx context.Context, studentID string) (*models.StudentStatistics, error) {
     stats := &models.StudentStatistics{ByType: make(map[string]int)}
-
-    // Pipeline: Match Student -> Group by Type -> Sum Points & Count
     pipeline := bson.A{
         bson.M{"$match": bson.M{"studentId": studentID}},
         bson.M{"$group": bson.M{
@@ -204,14 +202,18 @@ func (r *achievementRepository) GetStudentStats(ctx context.Context, studentID s
     }
 
     cursor, err := r.collection.Aggregate(ctx, pipeline)
-    if err != nil { return nil, err }
+    if err != nil {
+        return nil, err
+    }
 
     var results []struct {
         Id     string `bson:"_id"`
         Count  int    `bson:"count"`
         Points int    `bson:"points"`
     }
-    if err = cursor.All(ctx, &results); err != nil { return nil, err }
+    if err = cursor.All(ctx, &results); err != nil {
+        return nil, err
+    }
 
     for _, res := range results {
         stats.ByType[res.Id] = res.Count

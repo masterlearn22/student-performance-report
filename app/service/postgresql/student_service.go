@@ -17,7 +17,6 @@ func NewStudentService(r repo.StudentRepository, a mongoRepo.AchievementReposito
 }
 
 func (s *StudentService) GetAllStudents(c *fiber.Ctx) error {
-    // [FIX] Tambahkan c.Context()
     data, err := s.studentRepo.GetAllStudents(c.Context())
     if err != nil {
         return c.Status(500).JSON(fiber.Map{"error": err.Error()})
@@ -31,7 +30,6 @@ func (s *StudentService) GetStudentByID(c *fiber.Ctx) error {
         return c.Status(400).JSON(fiber.Map{"error": "Invalid UUID format"})
     }
 
-    // [FIX] Tambahkan c.Context()
     student, err := s.studentRepo.GetStudentByID(c.Context(), id)
     if err != nil {
         return c.Status(404).JSON(fiber.Map{"error": "student not found"})
@@ -45,9 +43,6 @@ func (s *StudentService) GetStudentAchievements(c *fiber.Ctx) error {
     if err != nil {
         return c.Status(400).JSON(fiber.Map{"error": "Invalid UUID format"})
     }
-
-    // Note: Achievement Repo Mongo Anda sepertinya belum diupdate pakai context di interface-nya
-    // Jadi biarkan seperti ini dulu, kecuali Anda mengubah interface achievementRepo juga.
     achievements, err := s.achievementRepo.GetStudentAchievements(id)
     if err != nil {
         return c.Status(500).JSON(fiber.Map{"error": err.Error()})
@@ -70,7 +65,6 @@ func (s *StudentService) UpdateAdvisor(c *fiber.Ctx) error {
     lecturerID, err := uuid.Parse(body.LecturerID)
     if err != nil { return c.Status(400).JSON(fiber.Map{"error": "Invalid Lecturer ID"}) }
 
-    // [FIX] Tambahkan c.Context()
     err = s.studentRepo.UpdateAdvisor(c.Context(), studentID, lecturerID)
     if err != nil {
         return c.Status(500).JSON(fiber.Map{"error": err.Error()})
