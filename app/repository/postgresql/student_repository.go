@@ -26,9 +26,10 @@ func NewStudentRepository(pg *sql.DB) StudentRepository {
 
 func (r *studentRepository) GetAllStudents(ctx context.Context) ([]models.Student, error) {
     query := `
-        SELECT id, user_id, student_id, program_study, academic_year, advisor_id, created_at
-        FROM students
-        ORDER BY created_at DESC
+        SELECT s.id, s.user_id, s.student_id, u.full_name, s.program_study, s.academic_year, s.advisor_id, s.created_at
+        FROM students s
+        JOIN users u ON s.user_id = u.id
+        ORDER BY s.created_at DESC
     `
     rows, err := r.pg.QueryContext(ctx, query)
     if err != nil {
@@ -39,9 +40,19 @@ func (r *studentRepository) GetAllStudents(ctx context.Context) ([]models.Studen
     var list []models.Student
     for rows.Next() {
         var s models.Student
-        err := rows.Scan(&s.ID, &s.UserID, &s.StudentID, &s.ProgramStudy,
-            &s.AcademicYear, &s.AdvisorID, &s.CreatedAt)
-        if err != nil { return nil, err }
+        err := rows.Scan(
+            &s.ID,
+            &s.UserID, 
+            &s.StudentID, 
+            &s.FullName, 
+            &s.ProgramStudy,
+            &s.AcademicYear, 
+            &s.AdvisorID, 
+            &s.CreatedAt,
+        )
+        if err != nil {
+            return nil, err 
+        } 
         list = append(list, s)
     }
     return list, nil
@@ -50,9 +61,7 @@ func (r *studentRepository) GetAllStudents(ctx context.Context) ([]models.Studen
 func (r *studentRepository) GetStudentByID(ctx context.Context, id uuid.UUID) (*models.Student, error) {
     var s models.Student
     query := `
-        SELECT 
-            s.id, s.user_id, s.student_id, s.program_study, s.academic_year, s.advisor_id, s.created_at,
-            u.full_name
+        SELECT s.id, s.user_id, s.student_id, s.program_study, s.academic_year, s.advisor_id, s.created_at, u.full_name
         FROM students s
         JOIN users u ON s.user_id = u.id
         WHERE s.id = $1
@@ -61,8 +70,10 @@ func (r *studentRepository) GetStudentByID(ctx context.Context, id uuid.UUID) (*
     var advisorID sql.NullString 
 
     err := r.pg.QueryRowContext(ctx, query, id).Scan(
-        &s.ID, &s.UserID, &s.StudentID,
-        &s.ProgramStudy, &s.AcademicYear,
+        &s.ID, &s.UserID,
+        &s.StudentID,
+        &s.ProgramStudy,
+        &s.AcademicYear,
         &advisorID, 
         &s.CreatedAt,
         &s.FullName, 
@@ -112,7 +123,11 @@ func (r *studentRepository) GetStudentsByIDs(ctx context.Context, ids []string) 
     var results []models.StudentWithUser
     for rows.Next() {
         var data models.StudentWithUser
-        if err := rows.Scan(&data.ID, &data.FullName, &data.ProgramStudy); err != nil {
+        if err := rows.Scan(
+            &data.ID, 
+            &data.FullName, 
+            &data.ProgramStudy,
+            ); err != nil {
             return nil, err
         }
         results = append(results, data)
