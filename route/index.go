@@ -48,12 +48,33 @@ func SetupPostgresRoutes(app *fiber.App, db *sql.DB) {
         middleware.AuthRequired(), 
         middleware.RoleAllowed("admin"))
 
-    users.Get("/", adminService.GetAllUsers)
-    users.Get("/:id", adminService.GetUserByID)
-    users.Post("/", adminService.CreateUser)
-    users.Put("/:id", adminService.UpdateUser)
-    users.Delete("/:id", adminService.DeleteUser)
-    users.Put("/:id/role", adminService.AssignRole)
+    manageUsersMiddleware := middleware.RoleAllowed("admin")
+    manageUserPermission := middleware.PermissionRequired("manage:users")
+
+    users.Get("/", 
+        manageUsersMiddleware,
+        manageUserPermission,
+        adminService.GetAllUsers)
+    users.Get("/:id",
+        manageUsersMiddleware,
+        manageUserPermission,
+        adminService.GetUserByID)
+    users.Post("/",
+        manageUsersMiddleware,
+        manageUserPermission,
+        adminService.CreateUser)
+    users.Put("/:id",
+        manageUsersMiddleware,
+        manageUserPermission,
+        adminService.UpdateUser)
+    users.Delete("/:id",
+        manageUsersMiddleware,
+        manageUserPermission,
+        adminService.DeleteUser)
+    users.Put("/:id/role",
+        manageUsersMiddleware,
+        manageUserPermission,
+        adminService.AssignRole)
 
     // 5.4 Achievements
     ach := api.Group("/achievements", middleware.AuthRequired())
@@ -108,39 +129,55 @@ func SetupPostgresRoutes(app *fiber.App, db *sql.DB) {
         achievementService.RejectAchievement)
 
     // 5.5 Students & Lecturers
+    manageStudentsMiddleware :=middleware.AuthRequired(); middleware.RoleAllowed("admin", "dosen_wali")
+    manageStudentsPermission := middleware.PermissionRequired("manage:students")
+    manageLecturersMiddleware := middleware.AuthRequired(); middleware.RoleAllowed("admin")
+    manageLecturersPermission := middleware.PermissionRequired("manage:lecturers")
     api.Get("/students", 
         middleware.AuthRequired(),
+        manageStudentsMiddleware,
+        manageStudentsPermission,
         studentService.GetAllStudents)
 
-    api.Get("/students/:id", 
-        middleware.AuthRequired(), 
+    api.Get("/students/:id",  
+        middleware.AuthRequired(),
+        manageStudentsMiddleware,
+        manageStudentsPermission,
         studentService.GetStudentByID)
 
     api.Get("/students/:id/achievements", 
         middleware.AuthRequired(), 
+        manageStudentsMiddleware,
         studentService.GetStudentAchievements)
 
     api.Put("/students/:id/advisor", 
-        middleware.AuthRequired(), 
+        middleware.AuthRequired(),
+        manageStudentsMiddleware,
+        manageStudentsPermission, 
         studentService.UpdateAdvisor)
 
-    api.Get("/lecturers", 
-        middleware.AuthRequired(), 
+    api.Get("/lecturers",  
+        middleware.AuthRequired(),
+        manageLecturersMiddleware,
+        manageLecturersPermission,
         lecturerService.GetAllLecturers)
 
     api.Get("/lecturers/:id/advisees", 
-        middleware.AuthRequired(), 
+        middleware.AuthRequired(),
+        manageLecturersMiddleware,
+        manageLecturersPermission, 
         lecturerService.GetAdvisees)
 
 	// 5.8 Reports & Analytics (NEW)
-	reports := api.Group("/reports", 
-    middleware.AuthRequired())
-        middleware.AuthRequired()
+	reports := api.Group("/reports", middleware.AuthRequired())
+    reportMiddleware := middleware.RoleAllowed("admin")
+    reportPermission := middleware.PermissionRequired("report:students")
         
-	reports.Get("/statistics",
-		middleware.RoleAllowed("admin"),
+	reports.Get("/statistics",       
+        reportMiddleware,
 		reportService.GetStatistics)
 
 	reports.Get("/student/:id",
+        reportPermission,
 		reportService.GetStudentReport)
 }
