@@ -79,6 +79,7 @@ func (s *AchievementService) CreateAchievement(c *fiber.Ctx) error {
 
     req.Attachments = make([]modelMongo.Attachment, 0)
     req.StudentID = studentID.String()
+    req.Points = 0 
     req.CreatedAt = time.Now()
     req.UpdatedAt = time.Now()
     mongoID, err := s.mongoRepo.InsertOne(ctx, req)
@@ -157,7 +158,7 @@ func (s *AchievementService) GetAllAchievements(c *fiber.Ctx) error {
     lecturerID, err := s.lecturer.GetLecturerByUserID(ctx, userID)
     if  err == nil { 
 
-        advisees, err := s.lecturer.GetAdvisees(lecturerID)
+        advisees, err:= s.lecturer.GetAdvisees(lecturerID)
         if err != nil {
         return c.Status(500).JSON(fiber.Map{
             "error": "failed to fetch advisees",
@@ -434,39 +435,74 @@ func (s *AchievementService) DeleteAchievement(c *fiber.Ctx) error {
 // @Router /achievements/{id}/verify [post]
 func (s *AchievementService) VerifyAchievement(c *fiber.Ctx) error {
     ctx := c.Context()
+
     if !middleware.HasPermission(c, "achievement:verify") {
-    return fiber.ErrForbidden
+        return fiber.ErrForbidden
     }
 
-    achievementID, _ := uuid.Parse(c.Params("id"))
+    achievementID, err := uuid.Parse(c.Params("id"))
+    if err != nil {
+        return c.Status(400).JSON(fiber.Map{"error": "Invalid achievement ID"})
+    }
 
     userID, err := getUserIDFromToken(c)
     if err != nil {
-        return c.Status(401).JSON(fiber.Map{"error": err.Error()}) 
+        return c.Status(401).JSON(fiber.Map{"error": err.Error()})
     }
 
-    _, err = s.lecturer.GetLecturerByUserID(ctx, userID) 
+    lecturerID, err := s.lecturer.GetLecturerByUserID(ctx, userID)
     if err != nil {
-        return c.Status(403).JSON(fiber.Map{"error": "User is not a lecturer"}) 
+        return c.Status(403).JSON(fiber.Map{"error": "User is not a lecturer"})
+    }
+
+    var req struct {
+        Points int `json:"points"`
+    }
+
+    if err := c.BodyParser(&req); err != nil {
+        return c.Status(400).JSON(fiber.Map{"error": "Invalid request body"})
+    }
+
+    if req.Points <= 0 {
+        return c.Status(400).JSON(fiber.Map{
+            "error": "Points must be greater than 0",
+        })
     }
 
     ref, err := s.pgRepo.GetReferenceByID(ctx, achievementID)
     if err != nil {
-        return c.Status(404).JSON(fiber.Map{"error": "Achievement not found"}) 
+        return c.Status(404).JSON(fiber.Map{"error": "Achievement not found"})
     }
 
-   
     if ref.Status != "submitted" {
-        return c.Status(400).JSON(fiber.Map{"error": "Achievement must be in 'submitted' status to be verified"})
+        return c.Status(400).JSON(fiber.Map{
+            "error": "Achievement must be in 'submitted' status to be verified",
+        })
     }
 
-    err = s.pgRepo.UpdateStatus(ctx, achievementID, "verified", &userID, "") 
+    
+    err = s.mongoRepo.UpdatePoints(ctx, ref.MongoAchievementID, req.Points)
     if err != nil {
-        return c.Status(500).JSON(fiber.Map{"error": "Failed to verify achievement"})
+        return c.Status(500).JSON(fiber.Map{
+            "error": "Failed to update achievement points",
+        })
     }
 
-    return c.JSON(fiber.Map{"status": "success", "message": "Achievement verified"})
+    // ✅ update status di Postgres
+    err = s.pgRepo.UpdateStatus(ctx, achievementID, "verified", &lecturerID, "")
+    if err != nil {
+        return c.Status(500).JSON(fiber.Map{
+            "error": "Failed to verify achievement",
+        })
+    }
+
+    return c.JSON(fiber.Map{
+        "status":  "success",
+        "message": "Achievement verified",
+        "points":  req.Points,
+    })
 }
+
 
 // RejectAchievement godoc
 // @Summary Reject Achievement

@@ -17,6 +17,7 @@ type AchievementReference struct {
 	StudentID          uuid.UUID  `json:"studentId" db:"student_id"`
 	MongoAchievementID string     `json:"mongoAchievementId" db:"mongo_achievement_id"`
 	Status             string     `json:"status" db:"status"` 
+	Points          	int       `json:"points" db:"points"`
 	SubmittedAt        *time.Time `json:"submittedAt" db:"submitted_at"`
 	VerifiedAt         *time.Time `json:"verifiedAt" db:"verified_at"`
 	VerifiedBy         *uuid.UUID `json:"verifiedBy" db:"verified_by"`

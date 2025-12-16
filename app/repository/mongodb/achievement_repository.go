@@ -18,8 +18,9 @@ type AchievementRepository interface {
 	DeleteAchievement(ctx context.Context, mongoID string) error
 	UpdateOne(ctx context.Context, mongoID string, data models.Achievement) error
 	AddAttachment(ctx context.Context, mongoID string, attachment models.Attachment) error
-    GetGlobalStats(ctx context.Context) (*models.GlobalStatistics, error) // Baru
-    GetStudentStats(ctx context.Context, studentID string) (*models.StudentStatistics, error) // Baru
+    GetGlobalStats(ctx context.Context) (*models.GlobalStatistics, error) 
+    GetStudentStats(ctx context.Context, studentID string) (*models.StudentStatistics, error) 
+    UpdatePoints(ctx context.Context, mongoID string, points int) error
 }
 
 type achievementRepository struct {
@@ -224,3 +225,22 @@ func (r *achievementRepository) GetStudentStats(ctx context.Context, studentID s
     return stats, nil
 }
 
+func (r *achievementRepository) UpdatePoints(ctx context.Context,mongoID string, points int,) error {
+    oid, err := primitive.ObjectIDFromHex(mongoID)
+    if err != nil {
+        return err
+    }
+
+    _, err = r.collection.UpdateOne(
+        ctx,
+        bson.M{"_id": oid},
+        bson.M{
+            "$set": bson.M{
+                "points":     points,
+                "updatedAt": time.Now(),
+            },
+        },
+    )
+
+    return err
+}

@@ -137,3 +137,7 @@ func (m *MockAchievementPgRepo) SubmitReference(ctx context.Context, id uuid.UUI
 	return args.Error(0)
 }
 
+func (m *MockAchievementMongoRepo) UpdatePoints( ctx context.Context, mongoID string, points int) error {
+    args := m.Called(ctx, mongoID, points)
+    return args.Error(0)
+}

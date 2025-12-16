@@ -130,3 +130,8 @@ func (m *MockAchievementRepo) GetStudentStats(ctx context.Context, studentID str
 	}
 	return args.Get(0).(*modelMongo.StudentStatistics), args.Error(1)
 }
+
+func (m *MockAchievementRepo) UpdatePoints(ctx context.Context,mongoID string,points int) error {
+	args := m.Called(ctx, mongoID, points)
+	return args.Error(0)
+}

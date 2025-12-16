@@ -180,6 +180,8 @@ func (r *achievementRepoPostgres) DeleteReference(ctx context.Context, id uuid.U
     return err
 }
 
+
+
 func (r *achievementRepoPostgres) UpdateStatus(ctx context.Context, id uuid.UUID, status string, verifiedBy *uuid.UUID, note string) error {
     query := `
         UPDATE achievement_references 
