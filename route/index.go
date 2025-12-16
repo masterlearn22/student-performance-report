@@ -50,55 +50,16 @@ func SetupPostgresRoutes(app *fiber.App, db *sql.DB) {
 
     // 5.4 Achievements
     ach := api.Group("/achievements", middleware.AuthRequired())
-    ach.Get("/", 
-        middleware.PermissionRequired("achievement:read"), 
-        achievementService.GetAllAchievements)
-    
-    ach.Get("/:id", 
-        middleware.PermissionRequired("achievement:read"), 
-        achievementService.GetAchievementDetail)
-    
-    ach.Get("/:id/history", 
-        middleware.PermissionRequired("achievement:read"), 
-        achievementService.GetAchievementHistory)
-
-    mhsMiddleware := middleware.RoleAllowed("mahasiswa")
-    ach.Post("/", 
-        mhsMiddleware, 
-        middleware.PermissionRequired("achievement:create"), 
-        achievementService.CreateAchievement)
-    
-    ach.Put("/:id", 
-        mhsMiddleware, 
-        middleware.PermissionRequired("achievement:update"), 
-        achievementService.UpdateAchievement)
-    
-    ach.Delete("/:id", 
-        mhsMiddleware, 
-        middleware.PermissionRequired("achievement:delete"), 
-        achievementService.DeleteAchievement)
-    
-    ach.Post("/:id/submit", 
-        mhsMiddleware, 
-        middleware.PermissionRequired("achievement:update"), 
-        achievementService.SubmitAchievement)
-    
-    ach.Post("/:id/attachments", 
-        mhsMiddleware, 
-        middleware.PermissionRequired("achievement:update"), 
-        achievementService.UploadAttachments)
-
-    dosenMiddleware := middleware.RoleAllowed("dosen_wali")
-    verifyPermission := middleware.PermissionRequired("achievement:verify")
-    ach.Post("/:id/verify", 
-        dosenMiddleware, 
-        verifyPermission, 
-        achievementService.VerifyAchievement)
-    
-    ach.Post("/:id/reject", 
-        dosenMiddleware, 
-        verifyPermission, 
-        achievementService.RejectAchievement)
+    ach.Get("/", achievementService.GetAllAchievements)
+    ach.Get("/:id", achievementService.GetAchievementDetail)
+    ach.Get("/:id/history", achievementService.GetAchievementHistory)
+    ach.Post("/", achievementService.CreateAchievement) 
+    ach.Put("/:id", achievementService.UpdateAchievement)
+    ach.Delete("/:id",  achievementService.DeleteAchievement)
+    ach.Post("/:id/submit", achievementService.SubmitAchievement)
+    ach.Post("/:id/attachments", achievementService.UploadAttachments)
+    ach.Post("/:id/verify", achievementService.VerifyAchievement)
+    ach.Post("/:id/reject", achievementService.RejectAchievement)
 
     // 5.5 Students & Lecturers
     student := api.Group("/students", middleware.AuthRequired())
@@ -111,15 +72,7 @@ func SetupPostgresRoutes(app *fiber.App, db *sql.DB) {
     lecturer.Get("/:id/advisees", lecturerService.GetAdvisees)
 
 	// 5.8 Reports & Analytics (NEW)
-	reports := api.Group("/reports", middleware.AuthRequired())
-    reportMiddleware := middleware.RoleAllowed("admin")
-    reportPermission := middleware.PermissionRequired("report:students")
-        
-	reports.Get("/statistics",       
-        reportMiddleware,
-		reportService.GetStatistics)
-
-	reports.Get("/student/:id",
-        reportPermission,
-		reportService.GetStudentReport)
+	reports := api.Group("/reports", middleware.AuthRequired())    
+	reports.Get("/statistics", reportService.GetStatistics)
+	reports.Get("/student/:id", reportService.GetStudentReport)
 }

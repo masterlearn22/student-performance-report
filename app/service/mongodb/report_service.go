@@ -5,6 +5,7 @@ import (
     "github.com/google/uuid"
     repoMongo "student-performance-report/app/repository/mongodb"
     repoPg "student-performance-report/app/repository/postgresql"
+    "student-performance-report/middleware"
 )
 
 type ReportService struct {
@@ -27,7 +28,9 @@ func NewReportService(m repoMongo.AchievementRepository, s repoPg.StudentReposit
 // @Router /reports/statistics [get]
 func (s *ReportService) GetStatistics(c *fiber.Ctx) error {
     ctx := c.Context()
-
+    if !middleware.HasPermission(c, "report:students") {
+    return fiber.ErrForbidden
+    }
     stats, err := s.mongoRepo.GetGlobalStats(ctx)
     if err != nil {
         return c.Status(500).JSON(fiber.Map{"error": "Failed to generate stats"})
@@ -64,6 +67,9 @@ func (s *ReportService) GetStatistics(c *fiber.Ctx) error {
 // @Router /reports/student/{id} [get]
 func (s *ReportService) GetStudentReport(c *fiber.Ctx) error {
     ctx := c.Context()
+    if !middleware.HasPermission(c, "report:students") {
+    return fiber.ErrForbidden
+    }
     targetStudentID := c.Params("id")
 
     stats, err := s.mongoRepo.GetStudentStats(ctx, targetStudentID)
